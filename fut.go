@@ -1,4 +1,4 @@
-package main
+package fut
 
 import (
 	"html/template"
