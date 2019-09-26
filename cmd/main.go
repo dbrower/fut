@@ -18,5 +18,5 @@ func main() {
 	t := time.Now()
 	t = t.Add(-5 * 24 * time.Hour)
 
-	fut.HarvestCurateObjects(fedora, t)
+	fut.HarvestCurateObjects(fedora, t, fut.PrintItem)
 }

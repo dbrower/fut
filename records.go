@@ -15,23 +15,21 @@ import (
 // This file contains functions needed to harvest and decode fedora
 // objects. They are then stored in the database.
 
-type Triples struct {
-	Subject   string
+type Pair struct {
 	Predicate string
 	Object    string
 }
 
 type CurateItem struct {
 	PID  string
-	Meta []Triples
+	Meta []Pair
 }
 
 func (c *CurateItem) Add(predicate string, value string) {
 	if value == "" {
 		return
 	}
-	c.Meta = append(c.Meta, Triples{
-		Subject:   c.PID,
+	c.Meta = append(c.Meta, Pair{
 		Predicate: predicate,
 		Object:    value,
 	})
@@ -143,6 +141,7 @@ func ReadDescMetadata(remote *remoteFedora, id string, result *CurateItem) error
 		}
 	}
 
+	// now add all the fields that used blank nodes
 	for _, valueList := range blanks {
 		var parentPredicate string
 		var encodedValue string
@@ -153,9 +152,9 @@ func ReadDescMetadata(remote *remoteFedora, id string, result *CurateItem) error
 				parentPredicate = object
 				continue
 			}
-			// very simple k-v pair encoding.
-			object = strings.ReplaceAll(object, "^", "\\^")
-			encodedValue += "^" + predicate + " " + object
+			// very simple k-v pair encoding, and not very safe.
+			// we assume "^^" is unlikely to appear in the data.
+			encodedValue += "^^" + predicate + " " + object
 		}
 		result.Add(parentPredicate, encodedValue)
 	}
@@ -282,7 +281,7 @@ func ReadBendoItem(remote *remoteFedora, id string, result *CurateItem) error {
 
 // FetchOneCurateObject loads the given fedora object and interpretes it as if
 // it were a curate object. This means only certain datastreams are downloaded.
-func FetchOneCurateObject(remote *remoteFedora, id string) (*CurateItem, error) {
+func FetchOneCurateObject(remote *remoteFedora, id string) (CurateItem, error) {
 	var err error
 	var rememberErr error
 	result := &CurateItem{PID: id}
@@ -318,10 +317,20 @@ func FetchOneCurateObject(remote *remoteFedora, id string) (*CurateItem, error) 
 	if err != nil && err != ErrNotFound {
 		rememberErr = err
 	}
-	return result, rememberErr
+	return *result, rememberErr
 }
 
-func HarvestCurateObjects(remote *remoteFedora, since time.Time) error {
+func PrintItem(item CurateItem) error {
+	for _, t := range item.Meta {
+		fmt.Println(
+			item.PID, "\t",
+			t.Predicate, "\t",
+			strings.ReplaceAll(t.Object, "\n", "\\n"))
+	}
+	return nil
+}
+
+func HarvestCurateObjects(remote *remoteFedora, since time.Time, f func(CurateItem) error) error {
 	var nItems, nErr int
 	token := ""
 	query := "pid~und:*"
@@ -333,6 +342,7 @@ func HarvestCurateObjects(remote *remoteFedora, since time.Time) error {
 
 	var err error
 	for {
+		// get a page of search results
 		var ids []string
 		ids, token, err = remote.SearchObjects(query, token)
 		if err != nil {
@@ -349,11 +359,12 @@ func HarvestCurateObjects(remote *remoteFedora, since time.Time) error {
 				continue
 			}
 			// update item in database
-			for _, t := range item.Meta {
-				fmt.Println(
-					t.Subject, "\t",
-					t.Predicate, "\t",
-					strings.ReplaceAll(t.Object, "\n", "\\n"))
+			err = f(item)
+			if err != nil {
+				log.Println(pid, err)
+				// don't exit early, we want to try harvesting each item in the list at least once
+				nErr++
+				continue
 			}
 		}
 		// no token is returned on the last results page
