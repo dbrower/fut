@@ -45,7 +45,7 @@ type RelsExtDS struct {
 	} `xml:"Description"`
 }
 
-func ReadRelsExt(remote *remoteFedora, id string, result *CurateItem) error {
+func ReadRelsExt(remote *RemoteFedora, id string, result *CurateItem) error {
 	body, err := remote.GetDatastream(id, "RELS-EXT")
 	if err != nil {
 		return err
@@ -111,7 +111,7 @@ func ApplyPrefixes(s string) string {
 	return s
 }
 
-func ReadDescMetadata(remote *remoteFedora, id string, result *CurateItem) error {
+func ReadDescMetadata(remote *RemoteFedora, id string, result *CurateItem) error {
 	body, err := remote.GetDatastream(id, "descMetadata")
 	if err != nil {
 		return err
@@ -172,7 +172,7 @@ type rightsDS struct {
 	Embargo string   `xml:"embargo>machine"`
 }
 
-func ReadRightsMetadata(remote *remoteFedora, id string, result *CurateItem) error {
+func ReadRightsMetadata(remote *RemoteFedora, id string, result *CurateItem) error {
 	body, err := remote.GetDatastream(id, "rightsMetadata")
 	if err != nil {
 		return err
@@ -217,7 +217,7 @@ type propertiesDS struct {
 	Representative string `xml:"representative"`
 }
 
-func ReadProperties(remote *remoteFedora, id string, result *CurateItem) error {
+func ReadProperties(remote *RemoteFedora, id string, result *CurateItem) error {
 	body, err := remote.GetDatastream(id, "properties")
 	if err != nil {
 		return err
@@ -237,7 +237,7 @@ func ReadProperties(remote *remoteFedora, id string, result *CurateItem) error {
 	return nil
 }
 
-func ReadContent(remote *remoteFedora, id string, result *CurateItem) error {
+func ReadContent(remote *RemoteFedora, id string, result *CurateItem) error {
 	info, err := remote.GetDatastreamInfo(id, "content")
 	if err != nil {
 		return err
@@ -252,7 +252,7 @@ func ReadContent(remote *remoteFedora, id string, result *CurateItem) error {
 	return nil
 }
 
-func ReadThumbnail(remote *remoteFedora, id string, result *CurateItem) error {
+func ReadThumbnail(remote *RemoteFedora, id string, result *CurateItem) error {
 	info, err := remote.GetDatastreamInfo(id, "thumbnail")
 	if err != nil {
 		return err
@@ -263,7 +263,7 @@ func ReadThumbnail(remote *remoteFedora, id string, result *CurateItem) error {
 	return nil
 }
 
-func ReadBendoItem(remote *remoteFedora, id string, result *CurateItem) error {
+func ReadBendoItem(remote *RemoteFedora, id string, result *CurateItem) error {
 	body, err := remote.GetDatastream(id, "bendo-item")
 	if err != nil {
 		return err
@@ -281,7 +281,7 @@ func ReadBendoItem(remote *remoteFedora, id string, result *CurateItem) error {
 
 // FetchOneCurateObject loads the given fedora object and interpretes it as if
 // it were a curate object. This means only certain datastreams are downloaded.
-func FetchOneCurateObject(remote *remoteFedora, id string) (CurateItem, error) {
+func FetchOneCurateObject(remote *RemoteFedora, id string) (CurateItem, error) {
 	var err error
 	var rememberErr error
 	result := &CurateItem{PID: id}
@@ -330,7 +330,7 @@ func PrintItem(item CurateItem) error {
 	return nil
 }
 
-func HarvestCurateObjects(remote *remoteFedora, since time.Time, f func(CurateItem) error) error {
+func HarvestCurateObjects(remote *RemoteFedora, since time.Time, f func(CurateItem) error) error {
 	var nItems, nErr int
 	token := ""
 	query := "pid~und:*"

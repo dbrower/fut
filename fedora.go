@@ -36,15 +36,15 @@ type Fedora interface {
 // For example
 //	http://fedoraAdmin:password@localhost:8983/fedora/
 // The returned structure does not buffer or cache Fedora responses.
-func NewRemote(fedoraPath string) *remoteFedora {
-	rf := &remoteFedora{hostpath: fedoraPath}
+func NewRemote(fedoraPath string) *RemoteFedora {
+	rf := &RemoteFedora{hostpath: fedoraPath}
 	if rf.hostpath[len(rf.hostpath)-1] != '/' {
 		rf.hostpath = rf.hostpath + "/"
 	}
 	return rf
 }
 
-type remoteFedora struct {
+type RemoteFedora struct {
 	hostpath string
 }
 
@@ -62,7 +62,7 @@ type DSList struct {
 	} `xml:"datastream"`
 }
 
-func (rf *remoteFedora) GetObjectInfo(id string) (ObjectInfo, error) {
+func (rf *RemoteFedora) GetObjectInfo(id string) (ObjectInfo, error) {
 	// TODO: make this joining smarter wrt not duplicating slashes
 	var path = rf.hostpath + "objects/" + id + "?format=xml"
 	var info ObjectInfo
@@ -70,7 +70,7 @@ func (rf *remoteFedora) GetObjectInfo(id string) (ObjectInfo, error) {
 	return info, err
 }
 
-func (rf *remoteFedora) GetDatastreamList(id string) ([]string, error) {
+func (rf *RemoteFedora) GetDatastreamList(id string) ([]string, error) {
 	var result []string
 	var dslist DSList
 	path := rf.hostpath + "objects/" + id + "/datastreams?format=xml"
@@ -98,7 +98,7 @@ type DsInfo struct {
 	Size         int    `xml:"dsSize"`
 }
 
-func (rf *remoteFedora) GetDatastreamInfo(id, dsname string) (DsInfo, error) {
+func (rf *RemoteFedora) GetDatastreamInfo(id, dsname string) (DsInfo, error) {
 	// TODO: make this joining smarter wrt not duplicating slashes
 	var path = rf.hostpath + "objects/" + id + "/datastreams/" + dsname + "?format=xml"
 	var info DsInfo
@@ -110,7 +110,7 @@ func (rf *remoteFedora) GetDatastreamInfo(id, dsname string) (DsInfo, error) {
 	return info, err
 }
 
-func (rf *remoteFedora) getXML(path string, result interface{}) error {
+func (rf *RemoteFedora) getXML(path string, result interface{}) error {
 	r, err := http.Get(path)
 	if err != nil {
 		return err
@@ -134,7 +134,7 @@ func (rf *remoteFedora) getXML(path string, result interface{}) error {
 
 // returns the contents of the datastream `dsname`.
 // The returned stream needs to be closed when finished.
-func (rf *remoteFedora) GetDatastream(id, dsname string) (io.ReadCloser, error) {
+func (rf *RemoteFedora) GetDatastream(id, dsname string) (io.ReadCloser, error) {
 	// TODO: make this joining smarter wrt not duplicating slashes
 	var path = rf.hostpath + "objects/" + id + "/datastreams/" + dsname + "/content"
 	r, err := http.Get(path)
@@ -155,7 +155,7 @@ func (rf *remoteFedora) GetDatastream(id, dsname string) (io.ReadCloser, error) 
 	return r.Body, nil
 }
 
-func (rf *remoteFedora) MakeObject(info ObjectInfo) error {
+func (rf *RemoteFedora) MakeObject(info ObjectInfo) error {
 	if info.PID == "" {
 		return ErrNeedPID
 	}
@@ -180,11 +180,11 @@ func (rf *remoteFedora) MakeObject(info ObjectInfo) error {
 	}
 }
 
-func (rf *remoteFedora) MakeDatastream(id string, info DsInfo, content io.Reader) error {
+func (rf *RemoteFedora) MakeDatastream(id string, info DsInfo, content io.Reader) error {
 	return rf.updateDS(id, info, content, "POST")
 }
 
-func (rf *remoteFedora) updateDS(id string, info DsInfo, content io.Reader, verb string) error {
+func (rf *RemoteFedora) updateDS(id string, info DsInfo, content io.Reader, verb string) error {
 	params := url.Values{}
 	if info.Label != "" {
 		params.Set("dsLabel", info.Label)
@@ -226,7 +226,7 @@ func (rf *remoteFedora) updateDS(id string, info DsInfo, content io.Reader, verb
 	}
 }
 
-func (rf *remoteFedora) UpdateDatastream(id string, info DsInfo, content io.Reader) error {
+func (rf *RemoteFedora) UpdateDatastream(id string, info DsInfo, content io.Reader) error {
 	return rf.updateDS(id, info, content, "PUT")
 }
 
@@ -235,7 +235,7 @@ type objectSearch struct {
 	IDs   []string `xml:"resultList>objectFields>pid"`
 }
 
-func (rf *remoteFedora) SearchObjects(query string, token string) ([]string, string, error) {
+func (rf *RemoteFedora) SearchObjects(query string, token string) ([]string, string, error) {
 	var results objectSearch
 	params := url.Values{}
 	params.Add("query", query)

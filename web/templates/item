@@ -1,0 +1,28 @@
+<html><head><style>
+tbody tr:nth-child(even) { background-color: #eeeeee; }
+</style></head><body>
+
+<h1>Item {{ .PID }}</h1>
+
+<table><thead><tr>
+    <th>Property</th>
+    <th>Value</th>
+</tr></thead><tbody>
+{{ range .Properties }}
+    <tr>
+        <td>{{ .Predicate }}</td>
+        <td>{{ if isCompound .Object }}
+            {{ range $k, $v := splitCompound .Object }}
+                <b>{{ $k }}</b> {{ $v }}<br/>
+            {{ end }}
+        {{ else if isPID .Object }}
+            <a href="/obj/{{ .Object }}">{{ .Object }}</a>
+        {{ else if isURL .Object }}
+            <a href="{{ .Object }}">{{ .Object }}</a>
+        {{ else }}
+            {{ decodeUnicode .Object }}
+        {{ end }}</td>
+    </tr>
+{{ end }}
+</tbody></table>
+</body></html>
