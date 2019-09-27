@@ -21,15 +21,15 @@ type Pair struct {
 }
 
 type CurateItem struct {
-	PID  string
-	Meta []Pair
+	PID        string
+	Properties []Pair
 }
 
 func (c *CurateItem) Add(predicate string, value string) {
 	if value == "" {
 		return
 	}
-	c.Meta = append(c.Meta, Pair{
+	c.Properties = append(c.Properties, Pair{
 		Predicate: predicate,
 		Object:    value,
 	})
@@ -321,7 +321,7 @@ func FetchOneCurateObject(remote *remoteFedora, id string) (CurateItem, error) {
 }
 
 func PrintItem(item CurateItem) error {
-	for _, t := range item.Meta {
+	for _, t := range item.Properties {
 		fmt.Println(
 			item.PID, "\t",
 			t.Predicate, "\t",
