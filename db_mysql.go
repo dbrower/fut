@@ -178,17 +178,16 @@ func (sq *MysqlDB) FindItem(pid string) (CurateItem, error) {
 	return result, err
 }
 
-func (sq *MysqlDB) FindItemAndFiles(pid string) ([]CurateItem, error) {
+func (sq *MysqlDB) FindItemFiles(pid string) ([]CurateItem, error) {
 	var result []CurateItem
 	rows, err := sq.db.Query(`
 		SELECT subject, predicate, object
 		FROM triples
-		WHERE subject = ? OR subject IN (
+		WHERE subject IN (
 			SELECT subject
 			FROM triples
 			WHERE predicate = "isPartOf" and object = ?)
 		ORDER BY subject, sequence`,
-		pid,
 		pid,
 	)
 	if err != nil {

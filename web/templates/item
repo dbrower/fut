@@ -25,4 +25,19 @@ tbody tr:nth-child(even) { background-color: #eeeeee; }
     </tr>
 {{ end }}
 </tbody></table>
+
+{{ with AttachedFiles .PID }}
+<h2>Attached Files</h2>
+<table><thead>
+    <tr><th>PID</th><th>Mime-Type</th><th>Filename</th></tr>
+<tbody>
+    {{ range . }}
+    <tr>
+        <td><a href="/obj/{{ .PID }}">{{ .PID }}</a></td>
+        <td>{{ FirstField "mime-type" . }}</td>
+        <td>{{ FirstField "filename" . }}</td>
+    </tr>
+    {{ end }}
+</tbody></table>
+{{ end }}
 </body></html>

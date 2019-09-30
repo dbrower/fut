@@ -56,6 +56,23 @@ func splitCompound(s string) map[string]string {
 	return result
 }
 
+func AttachedFiles(pid string) []CurateItem {
+	items, err := Datasource.FindItemFiles(pid)
+	if err != nil {
+		log.Println(err)
+	}
+	return items
+}
+
+func firstField(target string, c CurateItem) string {
+	for i := range c.Properties {
+		if c.Properties[i].Predicate == target {
+			return c.Properties[i].Object
+		}
+	}
+	return ""
+}
+
 // LoadTemplates will load and compile our templates into memory
 func LoadTemplates(path string) error {
 	t := template.New("")
@@ -65,6 +82,8 @@ func LoadTemplates(path string) error {
 		"isCompound":    isCompound,
 		"splitCompound": splitCompound,
 		"decodeUnicode": decodeUnicode,
+		"AttachedFiles": AttachedFiles,
+		"FirstField":    firstField,
 	})
 	t, err := t.ParseGlob(filepath.Join(path, "*"))
 	Templates = t
