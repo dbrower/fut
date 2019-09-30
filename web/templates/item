@@ -1,6 +1,4 @@
-<html><head><style>
-tbody tr:nth-child(even) { background-color: #eeeeee; }
-</style></head><body>
+{{ template "header" }}
 
 <h1>Item {{ .PID }}</h1>
 
@@ -27,7 +25,7 @@ tbody tr:nth-child(even) { background-color: #eeeeee; }
 </tbody></table>
 
 {{ with AttachedFiles .PID }}
-<h2>Attached Files</h2>
+<h2>Attached Files ({{ len . }} Files)</h2>
 <table><thead>
     <tr><th>PID</th><th>Mime-Type</th><th>Filename</th></tr>
 <tbody>
@@ -35,9 +33,25 @@ tbody tr:nth-child(even) { background-color: #eeeeee; }
     <tr>
         <td><a href="/obj/{{ .PID }}">{{ .PID }}</a></td>
         <td>{{ FirstField "mime-type" . }}</td>
-        <td>{{ FirstField "filename" . }}</td>
+        <td><a href="{{ FirstField "file-location" . }}">{{ FirstField "filename" . }}</a></td>
     </tr>
     {{ end }}
 </tbody></table>
 {{ end }}
-</body></html>
+
+{{ with CollectionMembers .PID }}
+<h2>Collection Members ({{ len . }} Items)</h2>
+<table><thead>
+    <tr><th>PID</th><th>af-model</th><th>Title</th></tr>
+<tbody>
+    {{ range . }}
+    <tr>
+        <td><a href="/obj/{{ .PID }}">{{ .PID }}</a></td>
+        <td>{{ FirstField "af-model" . }}</td>
+        <td>{{ FirstField "dc:title" . | decodeUnicode }}</td>
+    </tr>
+    {{ end }}
+</tbody></table>
+{{ end }}
+
+{{ template "footer" }}

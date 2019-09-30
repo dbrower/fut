@@ -52,7 +52,7 @@ type ObjectInfo struct {
 	PID         string    `xml:"pid,attr"`
 	Label       string    `xml:"objLabel"`
 	CreateDate  time.Time `xml:"objCreateDate"`
-	LastModDate time.Time `xml:"ObjLastModDate"`
+	LastModDate time.Time `xml:"objLastModDate"`
 	State       string    `xml:"objState"`
 }
 

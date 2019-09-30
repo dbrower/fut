@@ -64,6 +64,14 @@ func AttachedFiles(pid string) []CurateItem {
 	return items
 }
 
+func CollectionMembers(pid string) []CurateItem {
+	items, err := Datasource.FindCollectionMembers(pid)
+	if err != nil {
+		log.Println(err)
+	}
+	return items
+}
+
 func firstField(target string, c CurateItem) string {
 	for i := range c.Properties {
 		if c.Properties[i].Predicate == target {
@@ -77,13 +85,14 @@ func firstField(target string, c CurateItem) string {
 func LoadTemplates(path string) error {
 	t := template.New("")
 	t = t.Funcs(template.FuncMap{
-		"isPID":         isPID,
-		"isURL":         isURL,
-		"isCompound":    isCompound,
-		"splitCompound": splitCompound,
-		"decodeUnicode": decodeUnicode,
-		"AttachedFiles": AttachedFiles,
-		"FirstField":    firstField,
+		"isPID":             isPID,
+		"isURL":             isURL,
+		"isCompound":        isCompound,
+		"splitCompound":     splitCompound,
+		"decodeUnicode":     decodeUnicode,
+		"AttachedFiles":     AttachedFiles,
+		"CollectionMembers": CollectionMembers,
+		"FirstField":        firstField,
 	})
 	t, err := t.ParseGlob(filepath.Join(path, "*"))
 	Templates = t
@@ -131,6 +140,13 @@ func GetObject(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 		return
 	}
 	err = Templates.ExecuteTemplate(w, "item", item)
+	if err != nil {
+		log.Println(err)
+	}
+}
+
+func ConfigPage(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
+	err := Templates.ExecuteTemplate(w, "config", nil)
 	if err != nil {
 		log.Println(err)
 	}

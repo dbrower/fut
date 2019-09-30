@@ -23,8 +23,10 @@ func migration1(tx migration.LimitedTx) error {
 		id int PRIMARY KEY AUTO_INCREMENT,
 		Subject varchar(64),
 		Predicate varchar(255),
-		Object text,
-		Sequence int)`,
+		Object text)`,
+		`CREATE TABLE IF NOT EXISTS config (
+		key varchar(255) PRIMARY KEY,
+		value text)`,
 	}
 	return execlist(tx, s)
 }
@@ -118,6 +120,23 @@ func NewMySQL(conn string) (*MysqlDB, error) {
 	return &MysqlDB{db: db}, nil
 }
 
+func (sq *MysqlDB) ReadConfig(key string) (string, error) {
+	var v string
+	row := sq.db.QueryRow(`SELECT value FROM config WHERE key = ? LIMIT 1`, key)
+	err := row.Scan(&v)
+	return v, err
+}
+
+func (sq *MysqlDB) SetConfig(key string, value string) error {
+	_, err := sq.db.Exec(`INSERT INTO config (key, value) VALUES (?, ?)
+		ON DUPLICATE KEY UPDATE value = ?`,
+		key,
+		value,
+		value,
+	)
+	return err
+}
+
 // AllPurls returns a list of every purl in the database.
 func (sq *MysqlDB) IndexItem(item CurateItem) error {
 	tx, err := sq.db.Begin()
@@ -134,14 +153,13 @@ func (sq *MysqlDB) IndexItem(item CurateItem) error {
 		return err
 	}
 
-	for seq, t := range item.Properties {
+	for _, t := range item.Properties {
 		_, err = tx.Exec(
-			`INSERT INTO triples (subject, predicate, object, sequence)
+			`INSERT INTO triples (subject, predicate, object)
 			VALUES (?, ?, ?, ?)`,
 			item.PID,
 			t.Predicate,
 			t.Object,
-			seq,
 		)
 		if err != nil {
 			return err
@@ -151,49 +169,9 @@ func (sq *MysqlDB) IndexItem(item CurateItem) error {
 	return err
 }
 
-// FindItem returns a single CurateItem record identified by PID.
-func (sq *MysqlDB) FindItem(pid string) (CurateItem, error) {
-	result := CurateItem{PID: pid}
-	rows, err := sq.db.Query(`
-		SELECT predicate, object
-		FROM triples
-		WHERE subject = ?
-		ORDER BY sequence`,
-		pid)
-	if err != nil {
-		return result, err
-	}
-	defer rows.Close()
-	for rows.Next() {
-		var pair Pair
-		err2 := rows.Scan(&pair.Predicate, &pair.Object)
-		if err2 != nil {
-			// propogate error out so it is returned
-			// but try to read as many properties as possible
-			err = err2
-		} else {
-			result.Properties = append(result.Properties, pair)
-		}
-	}
-	return result, err
-}
-
-func (sq *MysqlDB) FindItemFiles(pid string) ([]CurateItem, error) {
+func readCurateItems(rows *sql.Rows) ([]CurateItem, error) {
+	var err error
 	var result []CurateItem
-	rows, err := sq.db.Query(`
-		SELECT subject, predicate, object
-		FROM triples
-		WHERE subject IN (
-			SELECT subject
-			FROM triples
-			WHERE predicate = "isPartOf" and object = ?)
-		ORDER BY subject, sequence`,
-		pid,
-	)
-	if err != nil {
-		return result, err
-	}
-	defer rows.Close()
 	current := &CurateItem{}
 	for rows.Next() {
 		var subject string
@@ -214,7 +192,64 @@ func (sq *MysqlDB) FindItemFiles(pid string) ([]CurateItem, error) {
 	if current.PID != "" {
 		result = append(result, *current)
 	}
-	return result, nil
+	return result, err
+}
+
+// FindItem returns a single CurateItem record identified by PID.
+func (sq *MysqlDB) FindItem(pid string) (CurateItem, error) {
+	rows, err := sq.db.Query(`
+		SELECT subject, predicate, object
+		FROM triples
+		WHERE subject = ?
+		ORDER BY id`,
+		pid)
+	if err != nil {
+		return CurateItem{}, err
+	}
+	defer rows.Close()
+	items, err := readCurateItems(rows)
+	if len(items) == 0 {
+		return CurateItem{}, err
+	}
+	return items[0], err
+}
+
+func (sq *MysqlDB) FindItemFiles(pid string) ([]CurateItem, error) {
+	var result []CurateItem
+	rows, err := sq.db.Query(`
+		SELECT subject, predicate, object
+		FROM triples
+		WHERE subject IN (
+			SELECT subject
+			FROM triples
+			WHERE predicate = "isPartOf" and object = ?)
+		ORDER BY subject, id`,
+		pid,
+	)
+	if err != nil {
+		return result, err
+	}
+	defer rows.Close()
+	return readCurateItems(rows)
+}
+
+func (sq *MysqlDB) FindCollectionMembers(pid string) ([]CurateItem, error) {
+	var result []CurateItem
+	rows, err := sq.db.Query(`
+		SELECT subject, predicate, object
+		FROM triples
+		WHERE subject IN (
+			SELECT subject
+			FROM triples
+			WHERE predicate = "isMemberOfCollection" and object = ?)
+		ORDER BY subject, id`,
+		pid,
+	)
+	if err != nil {
+		return result, err
+	}
+	defer rows.Close()
+	return readCurateItems(rows)
 }
 
 func (sq *MysqlDB) FindAllRange(offset, count int) ([]CurateItem, error) {
@@ -228,7 +263,7 @@ func (sq *MysqlDB) FindAllRange(offset, count int) ([]CurateItem, error) {
 			FROM triples
 			WHERE predicate = "af-model"
 			LIMIT ? OFFSET ?)
-		ORDER BY subject, sequence`,
+		ORDER BY subject, id`,
 		count,
 		offset,
 	)
@@ -236,25 +271,5 @@ func (sq *MysqlDB) FindAllRange(offset, count int) ([]CurateItem, error) {
 		return result, err
 	}
 	defer rows.Close()
-	current := &CurateItem{}
-	for rows.Next() {
-		var subject string
-		var pair Pair
-		err2 := rows.Scan(&subject, &pair.Predicate, &pair.Object)
-		if err2 != nil {
-			err = err2
-			continue
-		}
-		if current.PID == "" {
-			current.PID = subject
-		} else if current.PID != subject {
-			result = append(result, *current)
-			current = &CurateItem{PID: subject}
-		}
-		current.Properties = append(current.Properties, pair)
-	}
-	if current.PID != "" {
-		result = append(result, *current)
-	}
-	return result, nil
+	return readCurateItems(rows)
 }

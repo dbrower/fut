@@ -16,7 +16,7 @@ func AddRoutes() http.Handler {
 		{"GET", "/", IndexHandler},
 		{"GET", "/obj/:id", GetObject},
 		{"GET", "/obj", NotImplemented},
-		{"GET", "/config", NotImplemented},
+		{"GET", "/config", ConfigPage},
 		{"POST", "/config", NotImplemented},
 	}
 

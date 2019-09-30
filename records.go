@@ -252,6 +252,21 @@ func ReadContent(remote *RemoteFedora, id string, result *CurateItem) error {
 	return nil
 }
 
+func ReadCharacterization(remote *RemoteFedora, id string, result *CurateItem) error {
+	body, err := remote.GetDatastream(id, "characterization")
+	if err != nil {
+		return err
+	}
+	v, err := ioutil.ReadAll(body)
+	body.Close()
+	if err != nil {
+		return err
+	}
+	result.Add("characterization", string(v))
+
+	return nil
+}
+
 func ReadThumbnail(remote *RemoteFedora, id string, result *CurateItem) error {
 	info, err := remote.GetDatastreamInfo(id, "thumbnail")
 	if err != nil {
@@ -303,8 +318,8 @@ func FetchOneCurateObject(remote *RemoteFedora, id string) (CurateItem, error) {
 	if err != nil {
 		rememberErr = err
 	}
+	// now try datastreams that may not be present
 	err = ReadContent(remote, id, result)
-	// only GenericFiles have content and thumbnail datastreams
 	if err != nil && err != ErrNotFound {
 		rememberErr = err
 	}
@@ -312,11 +327,24 @@ func FetchOneCurateObject(remote *RemoteFedora, id string) (CurateItem, error) {
 	if err != nil && err != ErrNotFound {
 		rememberErr = err
 	}
-	// not every item has a bendo-item
+	err = ReadCharacterization(remote, id, result)
+	if err != nil && err != ErrNotFound {
+		rememberErr = err
+	}
 	err = ReadBendoItem(remote, id, result)
 	if err != nil && err != ErrNotFound {
 		rememberErr = err
 	}
+
+	// finally, get the fedora create and modify dates
+	info, err := remote.GetObjectInfo(id)
+	if err != nil {
+		rememberErr = err
+	} else {
+		result.Add("fedora-create", info.CreateDate.Format(time.RFC3339))
+		result.Add("fedora-modify", info.LastModDate.Format(time.RFC3339))
+	}
+
 	return *result, rememberErr
 }
 
