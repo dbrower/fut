@@ -9,6 +9,7 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/julienschmidt/httprouter"
 )
@@ -16,6 +17,7 @@ import (
 var (
 	Templates      *template.Template
 	Datasource     *MysqlDB
+	TargetFedora   *RemoteFedora
 	StaticFilePath string
 	unicodeEscape  = regexp.MustCompile(`\\u\w{4,6}`)
 )
@@ -81,6 +83,14 @@ func firstField(target string, c CurateItem) string {
 	return ""
 }
 
+func configValue(key string) string {
+	v, err := Datasource.ReadConfig(key)
+	if err != nil {
+		log.Println(key, err)
+	}
+	return v
+}
+
 // LoadTemplates will load and compile our templates into memory
 func LoadTemplates(path string) error {
 	t := template.New("")
@@ -93,6 +103,7 @@ func LoadTemplates(path string) error {
 		"AttachedFiles":     AttachedFiles,
 		"CollectionMembers": CollectionMembers,
 		"FirstField":        firstField,
+		"ConfigValue":       configValue,
 	})
 	t, err := t.ParseGlob(filepath.Join(path, "*"))
 	Templates = t
@@ -149,5 +160,85 @@ func ConfigPage(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 	err := Templates.ExecuteTemplate(w, "config", nil)
 	if err != nil {
 		log.Println(err)
+	}
+}
+
+func UpdateConfig(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
+	if harvestStatus == StatusWaiting {
+		harvestControl <- HNow
+	}
+
+	ConfigPage(w, r, ps)
+}
+
+//
+// Harvester
+//
+
+var (
+	harvestControl chan int
+	// should have a mutex protecting it
+	harvestStatus int
+)
+
+const (
+	HNow = iota
+	HExit
+
+	StatusWaiting = iota
+	StatusHarvesting
+)
+
+func BackgroundHarvester() {
+	var lastHarvest time.Time
+	var harvestInterval time.Duration
+	s, err := Datasource.ReadConfig("last-harvest")
+	if err == nil {
+		lastHarvest, _ = time.Parse(time.RFC3339, s)
+	}
+	s, err = Datasource.ReadConfig("harvest-interval")
+	if err == nil {
+		harvestInterval, _ = time.ParseDuration(s)
+	}
+
+	harvestControl = make(chan int, 100)
+
+	for {
+		harvestStatus = StatusWaiting
+		var timer <-chan time.Time
+		if harvestInterval > 0 {
+			timer = time.After(harvestInterval)
+		}
+		select {
+		case msg := <-harvestControl:
+			if msg == HExit {
+				return
+			}
+		case <-timer:
+		}
+		log.Println("Start Harvest since", lastHarvest)
+		harvestStatus = StatusHarvesting
+		t := time.Now()
+		c := make(chan CurateItem, 10)
+		go func() {
+			for item := range c {
+				err := Datasource.IndexItem(item)
+				if err != nil {
+					log.Println(err)
+				}
+			}
+		}()
+		err := HarvestCurateObjects(TargetFedora, lastHarvest, func(item CurateItem) error {
+			c <- item
+			return nil
+		})
+
+		if err != nil {
+			log.Println(err)
+		} else {
+			lastHarvest = t
+			Datasource.SetConfig("last-harvest", t.Format(time.RFC3339))
+		}
+		log.Println("Finish Harvest")
 	}
 }

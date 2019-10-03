@@ -47,6 +47,7 @@ func main() {
 		return
 	}
 	fedora = fut.NewRemote(config.Fedora)
+	fut.TargetFedora = fedora
 	if config.Mysql != "" {
 		var err error
 		db, err = fut.NewMySQL(config.Mysql)
@@ -65,31 +66,7 @@ func main() {
 		fut.StaticFilePath = config.StaticFilePath
 		// add routes
 		h := fut.AddRoutes()
+		go fut.BackgroundHarvester()
 		http.ListenAndServe(":"+config.Port, h)
 	}
-}
-
-func DoHarvest() {
-	t := time.Now()
-	t = t.Add(-5 * 24 * time.Hour)
-
-	f := fut.PrintItem
-	c := make(chan fut.CurateItem, 10)
-	if db != nil {
-		f = func(item fut.CurateItem) error {
-			c <- item
-			return nil
-		}
-		go func() {
-			for item := range c {
-				err := db.IndexItem(item)
-				if err != nil {
-					log.Println(err)
-				}
-			}
-		}()
-	}
-	log.Println(fedora, f)
-	fut.HarvestCurateObjects(fedora, t, f)
-	close(c)
 }

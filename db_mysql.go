@@ -23,10 +23,12 @@ func migration1(tx migration.LimitedTx) error {
 		id int PRIMARY KEY AUTO_INCREMENT,
 		Subject varchar(64),
 		Predicate varchar(255),
-		Object text)`,
+		Object text,
+		INDEX i_subject (Subject),
+		INDEX i_predicate (Predicate))`,
 		`CREATE TABLE IF NOT EXISTS config (
-		key varchar(255) PRIMARY KEY,
-		value text)`,
+		c_key varchar(255) PRIMARY KEY,
+		c_value text)`,
 	}
 	return execlist(tx, s)
 }
@@ -122,14 +124,14 @@ func NewMySQL(conn string) (*MysqlDB, error) {
 
 func (sq *MysqlDB) ReadConfig(key string) (string, error) {
 	var v string
-	row := sq.db.QueryRow(`SELECT value FROM config WHERE key = ? LIMIT 1`, key)
+	row := sq.db.QueryRow(`SELECT c_value FROM config WHERE c_key = ? LIMIT 1`, key)
 	err := row.Scan(&v)
 	return v, err
 }
 
 func (sq *MysqlDB) SetConfig(key string, value string) error {
-	_, err := sq.db.Exec(`INSERT INTO config (key, value) VALUES (?, ?)
-		ON DUPLICATE KEY UPDATE value = ?`,
+	_, err := sq.db.Exec(`INSERT INTO config (c_key, c_value) VALUES (?, ?)
+		ON DUPLICATE KEY UPDATE c_value = ?`,
 		key,
 		value,
 		value,
@@ -156,7 +158,7 @@ func (sq *MysqlDB) IndexItem(item CurateItem) error {
 	for _, t := range item.Properties {
 		_, err = tx.Exec(
 			`INSERT INTO triples (subject, predicate, object)
-			VALUES (?, ?, ?, ?)`,
+			VALUES (?, ?, ?)`,
 			item.PID,
 			t.Predicate,
 			t.Object,

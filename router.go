@@ -17,7 +17,7 @@ func AddRoutes() http.Handler {
 		{"GET", "/obj/:id", GetObject},
 		{"GET", "/obj", NotImplemented},
 		{"GET", "/config", ConfigPage},
-		{"POST", "/config", NotImplemented},
+		{"POST", "/config", UpdateConfig},
 	}
 
 	r := httprouter.New()
