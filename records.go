@@ -307,11 +307,13 @@ func FetchOneCurateObject(remote *RemoteFedora, id string) (CurateItem, error) {
 		rememberErr = err
 	}
 	err = ReadProperties(remote, id, result)
-	if err != nil {
+	if err != nil && err != ErrNotFound {
+		// people objects don't have properties ds
 		rememberErr = err
 	}
 	err = ReadRightsMetadata(remote, id, result)
-	if err != nil {
+	if err != nil && err != ErrNotFound {
+		// people objects don't have rightsMetadata ds
 		rememberErr = err
 	}
 	err = ReadDescMetadata(remote, id, result)
