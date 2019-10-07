@@ -5,10 +5,9 @@ import (
 	"log"
 	"net/http"
 	"os"
-	"time"
 
 	"github.com/BurntSushi/toml"
-	"github.com/dbrower/fut"
+	"github.com/dbrower/fut/internal/fut"
 )
 
 type Config struct {

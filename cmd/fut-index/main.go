@@ -7,7 +7,7 @@ import (
 	"os"
 
 	"github.com/BurntSushi/toml"
-	"github.com/dbrower/fut"
+	"github.com/dbrower/fut/internal/fut"
 )
 
 type Config struct {
