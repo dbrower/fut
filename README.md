@@ -67,9 +67,9 @@ This sets a 5 minute harvest interval. You can set the interval for any length o
 
 If you are using my database dump file, the following are interesting items to look at:
 
-* [http://localhost:8080/obj/und:1v53jw84s7d] is a collection with more than 2600 members.
-* [http://localhost:8080/obj/und:qv33rv0753n] is my illustrative example of an ETD with 5 attached files.
-* [http://localhost:8080/obj/und:zp38w953p3c] is a collection with a lot of titles that use extended Unicode code pages.
-* [http://localhost:8080/obj/und:v118rb69n77] is a Person record
-* [http://localhost:8080/obj/und:jd472v26530] is a LinkedResource
+* <http://localhost:8080/obj/und:1v53jw84s7d> is a collection with more than 2600 members.
+* <http://localhost:8080/obj/und:qv33rv0753n> is my illustrative example of an ETD with 5 attached files.
+* <http://localhost:8080/obj/und:zp38w953p3c> is a collection with a lot of titles that use extended Unicode code pages.
+* <http://localhost:8080/obj/und:v118rb69n77> is a Person record
+* <http://localhost:8080/obj/und:jd472v26530> is a LinkedResource
 
